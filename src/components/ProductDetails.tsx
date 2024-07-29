@@ -1,12 +1,21 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { Product, Comment } from '../utils/Pdt.types';
-import { PdtApi, commentViewApi, commentAddApi, replyAddApi, commentDeleteApi, replyDeleteApi, rateProductApi } from '../services/allApis';
+import {
+    PdtApi,
+    commentViewApi,
+    commentAddApi,
+    replyAddApi,
+    commentDeleteApi,
+    replyDeleteApi,
+    rateProductApi,
+    likeApi,
+    unlikeApi
+} from '../services/allApis';
 import CommentSection from './CommentSection';
 import StarRating from './StarRating';
 import './ProductDetails.css';
 import { ToastContainer, toast } from 'react-toastify';
-
 
 const ProductDetails: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -14,7 +23,7 @@ const ProductDetails: React.FC = () => {
     const [comments, setComments] = useState<Comment[]>([]);
     const [userRating, setUserRating] = useState<number | null>(null);
     const [isLoggedIn, setIsLoggedIn] = useState<boolean>(true);
-    const userId = localStorage.getItem('currentId') ?? null; // Ensure userId is string or null
+    const userId = localStorage.getItem('currentId') ?? null;
     const userName = JSON.parse(localStorage.getItem("currentUser") ?? "{}")?.userName ?? 'guest';
     const token = localStorage.getItem('token');
 
@@ -48,13 +57,16 @@ const ProductDetails: React.FC = () => {
                         content: comment.content,
                         userId: comment.userId,
                         userName: comment.userName,
-                        likes: comment.likes ?? 0, // Adding likes property
+                        likes: comment.likes ?? 0,
+                        likedBy: comment.likedBy ?? [],
                         replies: comment.replies.map((reply: any) => ({
                             id: String(reply._id),
                             commentId: String(comment._id),
                             content: reply.content,
                             userId: reply.userId,
                             userName: reply.userName,
+                            likes: reply.likes ?? 0,
+                            likedBy: reply.likedBy ?? [],
                         })),
                     }));
                     setComments(transformedComments);
@@ -71,7 +83,16 @@ const ProductDetails: React.FC = () => {
 
     const addComment = async (content: string) => {
         try {
-            const newComment: Comment = { id: String(Date.now()), productId: String(id), content, userId: userId!, userName,  replies: [] }; // Adding likes property
+            const newComment: Comment = {
+                id: String(Date.now()),
+                productId: String(id),
+                content,
+                userId: userId!,
+                userName,
+                likes: 0,
+                likedBy: [],
+                replies: []
+            };
             setComments([...comments, newComment]);
             const result = await commentAddApi(reqHeader, { content }, id);
 
@@ -97,7 +118,21 @@ const ProductDetails: React.FC = () => {
         try {
             const updatedComments = comments.map(comment =>
                 comment.id === commentId
-                    ? { ...comment, replies: [...comment.replies, { id: String(Date.now()), commentId, content, userId: userId!, userName }] }
+                    ? {
+                        ...comment,
+                        replies: [
+                            ...comment.replies,
+                            {
+                                id: String(Date.now()),
+                                commentId,
+                                content,
+                                userId: userId!,
+                                userName,
+                                likes: 0,
+                                likedBy: []
+                            }
+                        ]
+                    }
                     : comment
             );
             setComments(updatedComments);
@@ -127,16 +162,7 @@ const ProductDetails: React.FC = () => {
             const result = await commentDeleteApi(reqHeader, commentId);
             if ('response' in result) {
                 const err: string | any = result.response?.data;
-                toast.info(err, {
-                    position: "top-center",
-                    autoClose: 3000,
-                    hideProgressBar: false,
-                    closeOnClick: true,
-                    pauseOnHover: true,
-                    draggable: true,
-                    progress: undefined,
-                    theme: "light",
-                });
+               
             }
         } catch (error) {
             console.error('Error deleting comment:', error);
@@ -152,19 +178,9 @@ const ProductDetails: React.FC = () => {
             );
             setComments(updatedComments);
             const result = await replyDeleteApi(reqHeader, commentId, replyId);
-            if ('response' in result) {
-                const err: string | any = result.response?.data;
-                toast.info(err, {
-                    position: "top-center",
-                    autoClose: 3000,
-                    hideProgressBar: false,
-                    closeOnClick: true,
-                    pauseOnHover: true,
-                    draggable: true,
-                    progress: undefined,
-                    theme: "light",
-                });
-            }
+            console.log(result)
+
+           
         } catch (error) {
             console.error('Error deleting reply:', error);
         }
@@ -192,9 +208,79 @@ const ProductDetails: React.FC = () => {
         }
     };
 
+    const handleLikeComment = async (commentId: string) => {
+        try {
+            const result = await likeApi(reqHeader, commentId, 'Comment');
+            if (result.status === 200 && 'data' in result) {
+                const updatedComment = result.data;
+                const updatedComments = comments.map(comment =>
+                    comment.id === commentId ? { ...comment, likes: updatedComment.likes, likedBy: updatedComment.likedBy } : comment
+                );
+                setComments(updatedComments);
+            }
+        } catch (err) {
+            console.error('Failed to like comment:', err);
+        }
+    };
+
+    const handleUnlikeComment = async (commentId: string) => {
+        try {
+            const result = await unlikeApi(reqHeader, commentId, 'Comment');
+            if (result.status === 200 && 'data' in result) {
+                const updatedComment = result.data;
+                const updatedComments = comments.map(comment =>
+                    comment.id === commentId ? { ...comment, likes: updatedComment.likes, likedBy: updatedComment.likedBy } : comment
+                );
+                setComments(updatedComments);
+            }
+        } catch (err) {
+            console.error('Failed to unlike comment:', err);
+        }
+    };
+    const handleLikeReply = async (commentId: string, replyId: string) => {
+        try {
+            const result = await likeApi(reqHeader, replyId, 'Reply');
+            if (result.status === 200 && 'data' in result) {
+                const updatedReply = result.data;
+                const updatedComments = comments.map(comment =>
+                    comment.id === commentId
+                        ? {
+                            ...comment,
+                            replies: comment.replies.map(reply =>
+                                reply.id === replyId ? { ...reply, likes: updatedReply.likes, likedBy: updatedReply.likedBy } : reply
+                            )
+                        }
+                        : comment
+                );
+                setComments(updatedComments);
+            }
+        } catch (err) {
+            console.error('Failed to like reply:', err);
+        }
+    };
     
-
-
+    const handleUnlikeReply = async (commentId: string, replyId: string) => {
+        try {
+            const result = await unlikeApi(reqHeader, replyId, 'Reply');
+            if (result.status === 200 && 'data' in result) {
+                const updatedReply = result.data;
+                const updatedComments = comments.map(comment =>
+                    comment.id === commentId
+                        ? {
+                            ...comment,
+                            replies: comment.replies.map(reply =>
+                                reply.id === replyId ? { ...reply, likes: updatedReply.likes, likedBy: updatedReply.likedBy } : reply
+                            )
+                        }
+                        : comment
+                );
+                setComments(updatedComments);
+            }
+        } catch (err) {
+            console.error('Failed to unlike reply:', err);
+        }
+    };
+    
     return (
         <div className="product-details">
             {product ? (
@@ -218,6 +304,10 @@ const ProductDetails: React.FC = () => {
                             isLoggedIn={isLoggedIn}
                             userRating={userRating}
                             handleRateProduct={handleRateProduct}
+                            handleLikeComment={handleLikeComment}
+                            handleUnlikeComment={handleUnlikeComment}
+                            handleLikeReply={handleLikeReply}
+                            handleUnlikeReply={handleUnlikeReply}
                             currentUserId={userId}
                         />
                     </div>

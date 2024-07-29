@@ -12,6 +12,8 @@ export interface Comment {
     userId: string | null;
     userName: string | null;
     content: string;
+    likes: number;
+    likedBy: string[];
     replies: Reply[];
     
     
@@ -23,5 +25,7 @@ export interface Reply {
     userId: string | null;
     userName: string | null;
     content: string;
+    likes: number;
+    likedBy: string[];
 
 }

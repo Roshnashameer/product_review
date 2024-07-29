@@ -12,7 +12,11 @@ interface CommentSectionProps {
     isLoggedIn: boolean;
     userRating: number | null;
     handleRateProduct: (rating: number) => void;
-    currentUserId: string | null;
+    handleLikeComment: (commentId: string) => void;
+    handleUnlikeComment: (commentId: string) => void;
+    handleLikeReply: (commentId: string, replyId: string) => void;
+    handleUnlikeReply: (commentId: string, replyId: string) => void;
+    currentUserId: string | any;
 }
 
 const CommentSection: React.FC<CommentSectionProps> = ({
@@ -24,6 +28,10 @@ const CommentSection: React.FC<CommentSectionProps> = ({
     isLoggedIn,
     userRating,
     handleRateProduct,
+    handleLikeComment,
+    handleUnlikeComment,
+    handleLikeReply,
+    handleUnlikeReply,
     currentUserId
 }) => {
     const [newComment, setNewComment] = useState('');
@@ -52,22 +60,18 @@ const CommentSection: React.FC<CommentSectionProps> = ({
         deleteComment(commentId);
     };
 
-    const handleDeleteReply = (commentId: string, replyId: string) => {
-        deleteReply(commentId, replyId);
-    };
-
 
     return (
         <div className="comment-section">
             <div className="rating-section">
                 {userRating !== null ? (
                     <div className="container-flex user-rating">
-                        <h5 className='text-secondary-emphasis'>Your Rating is {userRating} Stars</h5>
+                        <h5 className="text-secondary-emphasis">Your Rating is {userRating} Stars</h5>
                         <StarRating rating={userRating} readOnly={true} />
                     </div>
                 ) : (
                     <div className="container-flex">
-                        <h5 className='text-secondary-emphasis'>Rate this product</h5>
+                        <h5 className="text-secondary-emphasis">Rate this product</h5>
                         <StarRating rating={userRating} onRatingChange={handleRateProduct} />
                     </div>
                 )}
@@ -89,85 +93,86 @@ const CommentSection: React.FC<CommentSectionProps> = ({
                     Comment
                 </button>
             </div>
-            <h5 className='mt-3'>Comments<i className="fa-solid fa-message mx-2"></i></h5>
+            <h5 className="mt-3">Comments<i className="fa-solid fa-message mx-2"></i></h5>
             <div className="comment-list">
-                {comments.map((comment, index) => (
-                    <div key={comment.id} className={`comment-box mb-3`}>
-                        <div className="comment-content ">
-                            <div className='comment-header'>
+                {comments.map((comment) => (
+                    <div key={comment.id} className="comment-box mb-3">
+                        <div className="comment-content">
+                            <div className="comment-header">
                                 <i className="fa-regular fa-user"></i>
-                                <small> {comment.userName}</small>
+                                <small style={{ marginLeft: '8px' }}>{comment.userName}</small>
                             </div>
-                            <p>
-                                {comment.content}
-                                {isLoggedIn && currentUserId === comment.userId && (
-                                    <i className="fa fa-trash" onClick={() => deleteComment(comment.id)}></i>
-                                )}
-                            </p>
-                            {/* <div className="comment-actions">
-                                {isLoggedIn &&  
-
-                                
-                                   
-                                    //     {currentUserId === comment.userId ? (
-                                    //         <>
-                                    //             <i className="fa-solid fa-trash" onClick={() => handleDeleteComment(comment.id)}></i>
-                                    //             <i className="fa-solid fa-thumbs-up"></i>
-                                    //         </>
-                                    //     ) : (
-                                    //         <i className="fa-regular fa-thumbs-up" onClick={() => handleLikeComment(comment.id)}></i>
-                                    //     )}
-                                    //     {/* <span className="comment-likes">{comment.likes}</span> */}
-
-
-                            {/* }
-                            </div> */}
-
-                            {comment.replies.map(reply => (
-                                <div key={reply.id} className="reply-box">
-                                    <div className='reply-header '>
-                                        <i className="fa-regular fa-user"></i>
-                                        <small > {reply.userName}</small>
-                                    </div>
-                                    <p>{reply.content}
-                                        {isLoggedIn && currentUserId === reply.userId && (
-                                            <i className="fa fa-trash" onClick={() => deleteReply(comment.id, reply.id)}></i>
-                                        )}
-                                    </p>
-                                    {/* <div className="comment-actions">
+                            <p>{comment.content}</p>
+                            <div className="comment-actions">
                                 {isLoggedIn && (
                                     <>
+                                        <span className="comment-likes">{comment.likes}</span>
                                         {currentUserId === comment.userId ? (
                                             <>
-                                                <i className="fa-solid fa-trash" onClick={() => handleDeleteComment(comment.id)}></i>
                                                 <i className="fa-solid fa-thumbs-up"></i>
+                                                <i className="fa-solid fa-trash ml-auto" onClick={() => handleDeleteComment(comment.id)}></i>
                                             </>
                                         ) : (
-                                            <i className="fa-regular fa-thumbs-up" onClick={() => handleLikeComment(comment.id)}></i>
+                                            <>
+                                                {comment.likedBy.includes(currentUserId) ? (
+                                                    <i className="fa-regular fa-thumbs-down" onClick={() => handleUnlikeComment(comment.id)}></i>
+                                                ) : (
+                                                    <i className="fa-regular fa-thumbs-up" onClick={() => handleLikeComment(comment.id)}></i>
+                                                )}
+                                            </>
                                         )}
-                                        <span className="comment-likes">{comment.likes}</span>
                                     </>
                                 )}
-                            </div> */}
-
-                                </div>
-                            ))}
-                            <div className="reply-input-group mb-3">
-                                <input
-                                    type="text"
-                                    value={replyInputs[comment.id] || ''}
-                                    onChange={(e) => handleReplyInputChange(comment.id, e.target.value)}
-                                    placeholder="Reply to this comment"
-                                    className="form-control"
-                                />
-                                <button
-                                    className="btn btn-secondary"
-                                    onClick={() => handleAddReply(comment.id)}
-                                    disabled={!replyInputs[comment.id] || replyInputs[comment.id].trim() === ''}
-                                >
-                                    Reply
-                                </button>
                             </div>
+                        </div>
+                        {comment.replies.map((reply) => (
+                            <div key={reply.id} className="reply-box">
+                                <div className="reply-header">
+                                    <i className="fa-regular fa-user"></i>
+                                    <small style={{ marginLeft: '8px' }}>{reply.userName}</small>
+                                </div>
+                                <p>
+                                    {reply.content}
+                                </p>
+                               <div className='reply-actions'>
+                                    {isLoggedIn && (
+                                        <>
+                                            <span className="reply-likes">{reply.likes}</span>
+                                            {currentUserId === reply.userId ? (
+                                                <>
+                                                     <i className="fa-solid fa-thumbs-up"></i>
+                                                    <i className="fa fa-trash ml-auto" onClick={() => deleteReply(comment.id, reply.id)}></i>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    {reply.likedBy.includes(currentUserId) ? (
+                                                        <i className="fa-regular fa-thumbs-down" onClick={() => handleUnlikeReply(comment.id, reply.id)}></i>
+                                                    ) : (
+                                                        <i className="fa-regular fa-thumbs-up" onClick={() => handleLikeReply(comment.id, reply.id)}></i>
+                                                    )}
+                                                </>
+                                            )}
+                                        </>
+                                    )}
+    
+                               </div>
+                            </div>
+                        ))}
+                        <div className="reply-input-group mb-3">
+                            <input
+                                type="text"
+                                value={replyInputs[comment.id] || ''}
+                                onChange={(e) => handleReplyInputChange(comment.id, e.target.value)}
+                                placeholder="Reply to this comment"
+                                className="form-control"
+                            />
+                            <button
+                                className="btn btn-secondary"
+                                onClick={() => handleAddReply(comment.id)}
+                                disabled={!replyInputs[comment.id] || replyInputs[comment.id].trim() === ''}
+                            >
+                                Reply
+                            </button>
                         </div>
                     </div>
                 ))}

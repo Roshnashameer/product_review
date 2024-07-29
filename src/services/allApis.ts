@@ -43,4 +43,10 @@ export const replyDeleteApi = async (headers: any, commentId: string, replyId: s
     return await commonApi('DELETE', `${BASE_URL}/comments/${commentId}/replies/${replyId}`,{}, headers);
 };
 
+export const likeApi = async (headers: any,  targetId: string, targetModel: string) => {
+    return await commonApi('POST', `${BASE_URL}/like`, { targetId, targetModel }, headers);
+};
+export const unlikeApi = async (headers: any,  targetId: string, targetModel: string) => {
+    return await commonApi('POST', `${BASE_URL}/unlike`, { targetId, targetModel }, headers);
+};
 
